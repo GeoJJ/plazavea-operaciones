@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Operaciones de tienda | Plaza Vea</title><link rel="stylesheet" th:href="@{/panel.css}"><script defer th:src="@{/panel.js}"></script></head>
+<body class="workspace">
+<aside class="sidebar">
+  <div class="brand"><img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Plaza_Vea_nuevo_logo.svg" alt="Plaza Vea"></div>
+  <p class="subbrand">Operaciones de tienda</p>
+  <nav aria-label="Navegación principal">
+    <a th:if="${atencion}" th:href="@{/(vista='atender')}" th:classappend="${vista=='atender'} ? ' activo'"><span aria-hidden="true">▣</span> Entregar pedido</a>
+    <a th:if="${atencion}" th:href="@{/(vista='recojos-listos')}" th:classappend="${vista=='recojos-listos'} ? ' activo'"><span aria-hidden="true">▤</span> Pedidos listos</a>
+    <a th:if="${atencion}" th:href="@{/(vista='recojos-historial')}" th:classappend="${vista=='recojos-historial'} ? ' activo'"><span aria-hidden="true">✓</span> Historial de recojos</a>
+    <a th:if="${picking}" th:href="@{/(vista='picking')}" th:classappend="${vista=='picking'} ? ' activo'"><span aria-hidden="true">▤</span> Picking</a>
+    <a th:if="${empaque}" th:href="@{/(vista='empaque')}" th:classappend="${vista=='empaque'} ? ' activo'"><span aria-hidden="true">▦</span> Por empaquetar</a>
+    <a th:if="${empaque}" th:href="@{/(vista='empaquetados')}" th:classappend="${vista=='empaquetados'} ? ' activo'"><span aria-hidden="true">✓</span> Historial de empaque</a>
+    <a th:unless="${atencion}" th:href="@{/(vista='pedidos')}" th:classappend="${vista=='pedidos'} ? ' activo'" th:attr="aria-current=${vista=='pedidos' ? 'page' : null}"><span aria-hidden="true">▤</span> <span th:text="${picking or empaque ? 'Detalle de pedido' : 'Pedidos'}"></span></a>
+    <a th:unless="${picking or empaque}" th:href="@{/(vista='inventario')}" th:classappend="${vista=='inventario'} ? ' activo'" th:attr="aria-current=${vista=='inventario' ? 'page' : null}"><span aria-hidden="true">▦</span> Inventario</a>
+    <a th:if="${supervisor or atencion}" th:href="@{/(vista='simulacion')}" th:classappend="${vista=='simulacion'} ? ' activo'" th:attr="aria-current=${vista=='simulacion' ? 'page' : null}"><span aria-hidden="true">⇄</span> <span th:text="${atencion ? 'Atención simulada' : 'Simular pedidos'}"></span></a>
+    <a th:if="${supervisor}" th:href="@{/correo}"><span aria-hidden="true">✉</span> Correo de recojo</a>
+    <a th:if="${almacen}" th:href="@{/(vista='despachos')}" th:classappend="${(#strings.startsWith(vista,'despachos'))} ? ' activo'"><span aria-hidden="true">⇄</span> Despachos</a>
+  </nav>
+  <div class="sesion-lateral">
+    <div class="perfil"><span class="avatar" th:text="${#strings.substring(usuario.nombre,0,1)}"></span>
+    <div><strong th:text="${usuario.nombre}"></strong><small>Prototipo académico</small></div>
+  </div>
+    <form th:action="@{/logout}" method="post"><button class="salir">Cerrar sesión <span aria-hidden="true">↗</span></button></form>
+  </div>
+</aside>
+<main class="main">
+<header class="top">
+  <div class="ruta">Operaciones <span aria-hidden="true">/</span> <strong th:text="${vista=='atender' or vista=='recojos-listos' or vista=='recojos-historial' ? 'Atención' : (vista=='inventario' ? 'Inventario' : (vista=='simulacion' ? 'Simulación' : (vista=='picking' ? 'Picking' : (vista=='empaque' or vista=='empaquetados' ? 'Empaquetado' : 'Pedidos'))))}"></strong></div>
+  <span class="branch"><span></span><b th:text="${usuario.sucursal}"></b></span>
+</header>
+<div class="contenido">
+  <p th:if="${error}" th:text="${error}" class="aviso error" role="alert"></p>
+  <p th:if="${exito}" th:text="${exito}" class="aviso" role="status"></p>
+  <section th:if="${vista=='atender'}" class="atencion">
+    <div class="hero"><div><p class="eyebrow">Atención en tienda</p><h1>Entregar pedido</h1>
+      <p>Escanea el QR del cliente para localizar su pedido de recojo.</p></div></div>
+    <section th:unless="${recojo}" class="tarjeta escaneo">
+      <h2>Escanear código de recojo</h2>
+      <p class="gris">Usa un lector que funcione como teclado o escribe el código manualmente.</p>
+      <form class="acciones" th:action="@{/atencion/validar}" method="post">
+        <label>Código de recojo<input name="codigo" required maxlength="80" autocomplete="off" autofocus placeholder="Escanea o escribe el código"></label>
+        <button>Validar código</button>
+      </form>
+    </section>
+    <section th:if="${recojo}" class="tarjeta detalle verificacion-recojo">
+      <div class="detalle-top"><div><p class="eyebrow">Código validado</p><h2 th:text="${recojo.referencia}"></h2></div>
+        <span class="estado" data-estado="Listo">Listo para recojo</span></div>
+      <dl class="producto-ficha">
+        <div><dt>Cliente</dt><dd th:text="${recojo.nombre_cliente}"></dd><small th:text="${recojo.referencia_cliente}"></small></div>
+        <div><dt>Sucursal</dt><dd th:text="${recojo.sucursal}"></dd></div>
+      </dl>
+      <h3>Productos que se deben entregar</h3>
+      <div class="producto" th:each="producto : ${productosRecojo}">
+        <div><img th:if="${producto.imagen_url}" class="foto-producto" th:src="${producto.imagen_url}" alt="" loading="lazy" referrerpolicy="no-referrer"><strong th:text="${producto.nombre}"></strong><small th:if="${producto.marca}" th:text="${producto.marca}"></small><small th:text="|SKU ${producto.sku} · EAN ${producto.ean}|"></small></div>
+        <span class="unidad" th:text="|${producto.cantidad} ud.|"></span>
+      </div>
+      <div class="acciones">
+        <form th:action="@{/atencion/confirmar}" method="post"><button>Confirmar entrega</button></form>
+        <form th:action="@{/atencion/limpiar}" method="post"><button class="secundario">Volver a escanear</button></form>
+      </div>
+    </section>
+  </section>
+  <section th:if="${vista=='pedidos' or vista=='recojos-listos' or vista=='recojos-historial' or (#strings.startsWith(vista,'despachos'))}">
+    <div class="hero">
+      <div><p class="eyebrow">Bandeja operativa</p><h1 th:if="${(#strings.startsWith(vista,'despachos'))}">Despachos de Delivery</h1><h1 th:unless="${(#strings.startsWith(vista,'despachos'))}" th:text="${vista=='recojos-listos' ? 'Pedidos listos' : (vista=='recojos-historial' ? 'Historial de recojos' : (atencion ? 'Recojo en tienda' : 'Pedidos omnicanal'))}"></h1>
+        <p th:text="${atencion ? 'Consulta por referencia o cliente.' : 'Consulta el avance de la preparación, el recojo y el despacho.'}"></p></div>
+      <a th:if="${supervisor}" class="boton" th:href="@{/(vista='simulacion')}"><span aria-hidden="true">+</span> Simular pedido</a>
+    </div>
+    <div class="acciones filtros" th:if="${#strings.startsWith(vista,'despachos')}">
+      <a class="boton" th:classappend="${vista!='despachos'} ? ' secundario'" th:href="@{/(vista='despachos')}">Por despachar</a>
+      <a class="boton" th:classappend="${vista!='despachos-reparto'} ? ' secundario'" th:href="@{/(vista='despachos-reparto')}">En reparto</a>
+    </div>
+    <section th:unless="${atencion or (#strings.startsWith(vista,'despachos'))}" class="metricas" aria-label="Resumen de pedidos">
+      <div><span class="punto recibido"></span><span>Recibidos</span><strong th:text="${resumen.recibidos}"></strong></div>
+      <div><span class="punto preparando"></span><span>En preparación</span><strong th:text="${resumen.preparacion}"></strong></div>
+      <div><span class="punto listo"></span><span>Listos</span><strong th:text="${resumen.listos}"></strong></div>
+      <div th:unless="${atencion}"><span class="punto reparto"></span><span>Reparto y reintentos</span><strong th:text="${resumen.reparto}"></strong></div>
+    </section>
+    <form class="filtros" method="get" th:action="@{/}"><input type="hidden" name="vista" th:value="${vista}">
+      <label>Buscar pedido<input type="search" name="q" th:value="${q}" placeholder="Referencia o cliente"></label>
+      <label th:unless="${atencion or (#strings.startsWith(vista,'despachos'))}">Modalidad<select name="modalidad"><option value="">Todas las modalidades</option><option value="RECOJO" th:selected="${modalidad=='RECOJO'}">Recojo en tienda</option><option value="DELIVERY" th:selected="${modalidad=='DELIVERY'}">Delivery</option></select></label>
+      <button class="secundario">Aplicar filtros</button>
+    </form>
+    <div class="columnas">
+      <section class="tarjeta bandeja">
+        <h2>Pedidos <small th:text="${#lists.size(pedidos)}"></small></h2>
+        <div th:if="${#lists.isEmpty(pedidos)}" class="vacio"><span aria-hidden="true">▤</span><strong>Sin pedidos en esta búsqueda</strong><a th:if="${supervisor}" th:href="@{/(vista='simulacion')}">Simular un pedido →</a></div>
+        <a class="fila" th:each="p : ${pedidos}" th:classappend="${pedido.id==p.id} ? ' seleccion'" th:href="@{/(vista=${vista},id=${p.id},modalidad=${modalidad},q=${q})}">
+          <div><strong th:text="${p.referencia}"></strong><small th:text="${p.modalidad=='RECOJO' ? 'Recojo en tienda' : 'Delivery'}"></small></div>
+          <div class="derecha"><span class="estado" th:attr="data-estado=${p.estado}" th:text="${p.estado=='Listo' ? (p.modalidad=='RECOJO' ? 'Listo para recojo' : 'Listo para despacho') : p.estado}"></span><small th:text="${vista=='recojos-historial' and p.fecha_recojo!=null ? p.fecha_recojo : 'Compromiso '+p.hora}"></small></div>
+        </a>
+      </section>
+      <section class="tarjeta detalle" th:if="${pedido}" th:with="e=${pedido.estado},r=${pedido.modalidad=='RECOJO'}">
+        <div class="detalle-top"><div><p class="eyebrow">Detalle del pedido</p><h2 th:text="${pedido.referencia}"></h2></div>
+          <span class="estado" th:attr="data-estado=${e}" th:text="${e}"></span></div>
+        <p class="gris" th:text="|${pedido.nombre_cliente} · ${pedido.referencia_cliente} · ${pedido.sucursal}|"></p>
+        <p class="etiqueta" th:text="${r ? 'Recojo en tienda' : 'Delivery a domicilio'}"></p>
+        <p th:each="entrega : ${entregas}" class="direccion"><span th:text="${entrega.direccion}"></span><small th:if="${entrega.repartidor}" th:text="|Repartidor: ${entrega.repartidor}|"></small></p>
+        <h3>Lista de preparación</h3>
+        <div class="producto" th:each="l : ${lineas}"><div><img th:if="${l.imagen_url}" class="foto-producto" th:src="${l.imagen_url}" alt="" loading="lazy" referrerpolicy="no-referrer"><strong th:text="${l.nombre}"></strong><small th:if="${l.marca}" th:text="${l.marca}"></small><small th:text="|SKU ${l.sku} · EAN ${l.ean} · Pasillo ${l.pasillo}|"></small></div><span class="unidad" th:text="|${l.cantidad} ud.|"></span></div>
+        <section th:if="${almacen and !r and (e=='Listo' or e=='Intento fallido')}" class="tarjeta detalle">
+          <h3>Asignar despacho</h3>
+          <p class="gris" th:text="|Transporte sugerido: ${transporteSugerido}|"></p>
+          <form class="acciones" method="post" th:action="@{/despachos/{id}/asignar(id=${pedido.id})}">
+            <label>Repartidor<select name="repartidor" required><option value="">Seleccionar</option><option th:each="rep : ${repartidores}" th:value="${rep.id}" th:text="${rep.nombre}"></option></select></label>
+            <label>Transporte<select name="transporte" required><option th:each="medio : ${transportes}" th:value="${medio}" th:text="${medio}"></option></select></label>
+            <button>Asignar repartidor</button>
+          </form>
+        </section>
+        <form class="acciones" th:if="${almacen and !r and (e=='Listo' or e=='Intento fallido' or e=='En reparto') or supervisor and (e=='Recibido' or e=='En picking' or e=='En packing' or e=='Listo')}" th:action="@{/pedido/{id}(id=${pedido.id})}" method="post">
+
+          <button th:if="${almacen and !r and asignado and (e=='Listo' or e=='Intento fallido')}" name="accion" value="despacho">Confirmar salida</button>
+          <button th:if="${almacen and e=='En reparto'}" name="accion" value="entrega">Confirmar entrega</button>
+          <button th:if="${almacen and e=='En reparto'}" name="accion" value="fallo" class="secundario">Registrar intento fallido</button>
+          <button th:if="${supervisor and (e=='Recibido' or e=='En picking' or e=='En packing' or e=='Listo')}" name="accion" value="cancelar" class="secundario">Cancelar pedido</button>
+        </form>
+        <a th:if="${atencion and e=='Listo'}" class="enlace" th:href="@{/(vista='atender')}">Ir a escanear el código →</a>
+        <a th:if="${supervisor and !codigo.isEmpty()}" class="enlace" th:href="@{/correo(id=${pedido.id})}">Abrir correo de recojo →</a>
+        <details th:if="${!codigo.isEmpty()}" class="ticket"><summary>Ver QR de demostración</summary>
+          <div class="ticket-body"><img th:src="${qr}" width="144" height="144" alt="Código QR de recojo"><div><strong>Código de recojo</strong><small>El mismo código se puede introducir en Atención.</small><code th:text="${codigo}"></code></div></div>
+        </details>
+        <form th:if="${picking and e=='En picking'}" class="acciones" th:action="@{/pedido/{id}(id=${pedido.id})}" method="post">
+          <label>Incidencia<input name="valor" required maxlength="240" placeholder="Describe el hallazgo"></label><button class="secundario" name="accion" value="incidencia">Registrar</button>
+        </form>
+        <p th:each="i : ${incidencias}" class="aviso" th:text="${i.nota}"></p>
+        <section th:if="${intentos != null and !#lists.isEmpty(intentos)}">
+          <h3>Asignaciones e intentos</h3>
+          <div class="evento" th:each="intento : ${intentos}">
+            <div><strong th:text="|${intento.repartidor} · ${intento.transporte}|"></strong><small th:text="|Asignó: ${intento.asignador}|"></small></div>
+            <span th:text="${intento.resultado != null ? intento.resultado : (intento.salida_en != null ? 'En reparto' : 'Asignado')}"></span>
+          </div>
+        </section>
+        <h3>Historial del pedido</h3>
+        <div class="evento" th:each="h : ${historial}"><div><strong th:text="${h.estado}"></strong><small th:text="${h.operario}"></small></div><span th:text="${h.hora}"></span></div>
+      </section>
+    </div>
+  </section>
+  <section th:if="${vista=='picking'}">
+    <div class="hero"><div><p class="eyebrow">Preparación</p><h1>Picking</h1>
+      <p>Acepta un pedido completo y confirma los productos conforme los encuentres.</p></div></div>
+    <aside class="recordatorio-pedido" aria-label="Recordatorio de preparación">
+      <strong>Un pedido puede incluir varios productos</strong>
+      <span>Revisa la referencia y confirma cada producto y su cantidad por separado.</span>
+    </aside>
+    <div class="columnas cola">
+      <section class="tarjeta bandeja">
+        <h2>Por asignar <small th:text="${#lists.size(pendientes)}"></small></h2>
+        <p class="vacio" th:if="${#lists.isEmpty(pendientes)}">No hay productos por asignar.</p>
+        <th:block th:each="item : ${pendientes}" th:with="clave=|aceptar-${item.id}-${item.producto_id}|">
+          <button type="button" class="fila cola-fila" th:attr="data-open=${clave}">
+            <div><img th:if="${item.imagen_url}" class="foto-producto" th:src="${item.imagen_url}" alt="" loading="lazy" referrerpolicy="no-referrer"><strong th:text="${item.nombre}"></strong><small th:if="${item.marca}" th:text="${item.marca}"></small><small th:text="|${item.referencia} · SKU ${item.sku}|"></small><small th:text="|EAN ${item.ean}|"></small></div>
+            <span class="unidad" th:text="|${item.cantidad} ud.|"></span>
+          </button>
+          <dialog class="modal modal-confirmacion" th:id="${clave}" th:attr="aria-labelledby=|${clave}-titulo|">
+            <h2 th:id="|${clave}-titulo|">¿Deseas aceptar este pedido?</h2>
+            <p th:text="|${item.referencia}. Se te asignarán todos los productos del pedido.|"></p>
+            <div class="acciones">
+              <form method="dialog"><button class="secundario" type="submit">No</button></form>
+              <form method="post" th:action="@{/pedido/{id}(id=${item.id})}"><button name="accion" value="iniciar">Sí, aceptar</button></form>
+            </div>
+          </dialog>
+        </th:block>
+      </section>
+      <section class="tarjeta bandeja">
+        <h2>Mi picking <small th:text="${#lists.size(asignados)}"></small></h2>
+        <p class="vacio" th:if="${#lists.isEmpty(asignados)}">Los productos de tus pedidos en curso aparecerán aquí.</p>
+        <th:block th:each="item : ${asignados}" th:with="clave=|producto-${item.id}-${item.producto_id}|">
+          <button type="button" class="fila cola-fila" th:attr="data-open=${clave}">
+            <div>
+              <img th:if="${item.imagen_url}" class="foto-producto" th:src="${item.imagen_url}" alt="" loading="lazy" referrerpolicy="no-referrer">
+              <strong th:text="${item.nombre}"></strong>
+              <small th:if="${item.marca}" th:text="${item.marca}"></small>
+              <small th:text="|${item.referencia} · SKU ${item.sku} · Pasillo ${item.pasillo}|"></small>
+              <small th:text="|Cantidad solicitada: ${item.cantidad} ud.|"></small>
+            </div>
+            <span class="estado" th:attr="data-estado=${item.preparado ? 'Listo' : 'En picking'}" th:text="${item.preparado ? 'Enviado a Empaquetado' : 'Por encontrar'}"></span>
+          </button>
+          <dialog class="modal" th:id="${clave}" th:attr="aria-labelledby=|${clave}-titulo|">
+            <div class="modal-cabeza"><div><p class="eyebrow" th:text="${item.referencia}"></p><h2 th:id="|${clave}-titulo|" th:text="${item.nombre}"></h2></div>
+              <form method="dialog"><button class="secundario" aria-label="Cerrar">×</button></form></div>
+            <img th:if="${item.imagen_url}" class="foto-producto foto-modal" th:src="${item.imagen_url}" alt="" loading="lazy" referrerpolicy="no-referrer">
+            <dl class="producto-ficha">
+              <div><dt>SKU</dt><dd th:text="${item.sku}"></dd></div><div><dt>EAN</dt><dd th:text="${item.ean}"></dd></div>
+              <div><dt>Stock en tienda</dt><dd th:text="|${item.stock_actual} ud.|"></dd></div><div><dt>Stock disponible</dt><dd th:text="|${item.stock_disponible} ud.|"></dd></div>
+              <div><dt>Por recoger</dt><dd th:text="|${item.cantidad} ud.|"></dd></div><div><dt>Pasillo</dt><dd th:text="${item.pasillo}"></dd></div>
+            </dl>
+            <p class="aviso" th:if="${item.preparado}">Producto confirmado y enviado a Empaquetado.</p>
+            <th:block th:unless="${item.preparado}">
+              <form class="acciones" method="post" th:action="@{/pedido/{id}/producto/{producto}/picking(id=${item.id},producto=${item.producto_id})}">
+                <label>Escanear o escribir código<input name="codigo" required maxlength="40" autocomplete="off" placeholder="SKU o EAN"></label>
+                <button>Validar código</button>
+              </form>
+              <button class="secundario manual" type="button" th:attr="data-open=|${clave}-confirmar|">Confirmar manualmente</button>
+            </th:block>
+            <a class="enlace" th:href="@{/(vista='pedidos',id=${item.id})}">Ver detalle del pedido →</a>
+          </dialog>
+          <dialog class="modal modal-confirmacion" th:unless="${item.preparado}" th:id="|${clave}-confirmar|" th:attr="aria-labelledby=|${clave}-pregunta|">
+            <h2 th:id="|${clave}-pregunta|">¿Es el producto correcto?</h2>
+            <p th:text="|${item.nombre} · SKU ${item.sku} · ${item.cantidad} ud.|"></p>
+            <div class="acciones">
+              <form method="dialog"><button class="secundario">No</button></form>
+              <form method="post" th:action="@{/pedido/{id}/producto/{producto}/picking(id=${item.id},producto=${item.producto_id})}">
+                <input type="hidden" name="manual" value="true"><button>Sí, lo encontré</button>
+              </form>
+            </div>
+          </dialog>
+        </th:block>
+      </section>
+    </div>
+  </section>
+  <section th:if="${vista=='empaque' or vista=='empaquetados'}">
+    <div class="hero"><div><p class="eyebrow">Preparación</p>
+      <h1 th:text="${vista=='empaque' ? 'Por empaquetar' : 'Historial de empaque'}"></h1>
+      <p th:text="${vista=='empaque' ? 'Los productos aparecen cuando Picking los confirma.' : 'Consulta los productos empaquetados por el equipo.'}"></p>
+    </div></div>
+    <aside class="recordatorio-pedido" aria-label="Recordatorio de empaquetado">
+      <strong>Un pedido puede incluir varios productos</strong>
+      <span>Agrupa los productos por referencia y marca el pedido como listo cuando estén todos empaquetados.</span>
+    </aside>
+    <div class="columnas cola" th:classappend="${vista=='empaquetados'} ? ' cola-unica'">
+      <section class="tarjeta bandeja">
+        <h2 th:text="${vista=='empaque' ? 'Productos recibidos' : 'Productos empaquetados'}"></h2>
+        <p class="vacio" th:if="${#lists.isEmpty(articulos)}">No hay productos en esta lista.</p>
+        <div class="fila" th:each="item : ${articulos}">
+          <div><img th:if="${item.imagen_url}" class="foto-producto" th:src="${item.imagen_url}" alt="" loading="lazy" referrerpolicy="no-referrer"><strong th:text="${item.nombre}"></strong><small th:if="${item.marca}" th:text="${item.marca}"></small>
+            <small th:text="|${item.referencia} · SKU ${item.sku} · EAN ${item.ean}|"></small>
+            <small th:text="|${item.cantidad} ud. · ${item.modalidad=='RECOJO' ? 'Recojo' : 'Delivery'}|"></small>
+            <small th:if="${item.empaquetador}" th:text="${item.empaquetador}"></small>
+          </div>
+          <form method="post" th:if="${vista=='empaque'}" th:action="@{/pedido/{id}/producto/{producto}/empaque(id=${item.id},producto=${item.producto_id})}">
+            <button>Empaquetar</button>
+          </form>
+          <a th:if="${vista=='empaquetados'}" class="enlace" th:href="@{/(vista='pedidos',id=${item.id})}">Ver pedido →</a>
+        </div>
+      </section>
+      <section th:if="${vista=='empaque'}" class="tarjeta bandeja">
+        <h2>Pedidos listos para cerrar <small th:text="${#lists.size(listosEmpaque)}"></small></h2>
+        <p class="vacio" th:if="${#lists.isEmpty(listosEmpaque)}">Aquí aparecen los pedidos con todos sus productos empaquetados.</p>
+        <div class="fila" th:each="item : ${listosEmpaque}">
+          <div><strong th:text="${item.referencia}"></strong><small th:text="${item.modalidad=='RECOJO' ? 'Recojo en tienda' : 'Delivery'}"></small></div>
+          <form method="post" th:action="@{/pedido/{id}(id=${item.id})}">
+            <button name="accion" value="listo">Marcar como listo</button>
+          </form>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <section th:if="${vista=='inventario' or vista=='simulacion'}">
+    <div class="hero"><div><p class="eyebrow" th:text="${vista=='inventario' ? 'Existencias' : 'Entorno académico'}"></p>
+      <h1 th:text="${vista=='inventario' ? 'Inventario por sucursal' : (atencion ? 'Atención simulada' : 'Simular pedidos')}"></h1>
+      <p th:text="${vista=='inventario' ? 'Consulta el stock físico, reservado y disponible.' : (atencion ? 'Registra una venta de prueba con el stock libre.' : 'Genera pedidos web de prueba para recojo o delivery.')}"></p>
+    </div></div>
+    <section class="tarjeta tabla"><table><thead><tr><th>Producto</th><th>SKU</th><th>EAN</th><th>Existencias</th><th>Reservado</th><th>Disponible</th><th th:if="${vista=='simulacion' or almacen}">Acción</th></tr></thead>
+    <tbody><tr th:each="i : ${inventario}"><td><img th:if="${i.imagen_url}" class="foto-producto" th:src="${i.imagen_url}" alt="" loading="lazy" referrerpolicy="no-referrer"><strong th:text="${i.nombre}"></strong><small th:if="${i.marca}" th:text="${i.marca}"></small><small th:text="|Pasillo ${i.pasillo}|"></small></td><td th:text="${i.sku}"></td><td th:text="${i.ean}"></td><td th:text="${i.stock_actual}"></td><td th:text="${i.stock_reservado}"></td><td><span class="unidad" th:text="${i.stock_disponible}"></span></td>
+      <td th:if="${vista=='simulacion' or almacen}">
+        <form th:if="${vista=='simulacion' and supervisor}" class="acciones" th:action="@{/simular}" method="post"><input type="hidden" name="producto" th:value="${i.producto_id}"><label>Cliente<select name="cliente" required><option value="">Seleccionar cliente</option><option th:each="c : ${clientes}" th:value="${c.id}" th:text="|${c.nombre} · ${c.referencia}|"></option></select></label><button name="modalidad" value="RECOJO">Recojo</button><button class="secundario" name="modalidad" value="DELIVERY">Delivery</button></form>
+        <form th:if="${vista=='simulacion' and atencion}" class="acciones" th:action="@{/venta}" method="post"><input type="hidden" name="producto" th:value="${i.producto_id}"><button>Registrar venta</button></form>
+        <form th:if="${vista=='inventario' and almacen}" class="acciones ingreso" th:action="@{/inventario/ingreso}" method="post"><input type="hidden" name="producto" th:value="${i.producto_id}"><label>Unidades<input type="number" min="1" max="10000" name="cantidad" required></label><label>Motivo<select name="motivo" required><option value="">Seleccionar motivo</option><option th:each="motivo : ${motivos}" th:value="${motivo}" th:text="${motivo}"></option></select></label><button>Ingresar</button></form>
+      </td></tr></tbody></table></section>
+  </section>
+</div>
+</main></body></html>
+
+
+
+
+
+
+
+
+

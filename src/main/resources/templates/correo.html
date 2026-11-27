@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Correo de recojo | Plaza Vea</title>
+  <link rel="stylesheet" th:href="@{/panel.css}"><link rel="stylesheet" th:href="@{/correo.css}">
+</head>
+<body class="correo">
+<header class="correo-top">
+  <a class="secundario volver" th:href="@{/}">← Volver a Operaciones</a>
+  <h1>Correo de recojo</h1>
+  <span class="correo-etiqueta">Bandeja simulada</span>
+</header>
+<main class="correo-grid">
+  <aside class="correo-bandeja" aria-label="Bandeja de entrada">
+    <h2>Bandeja de entrada <span th:text="${#lists.size(correos)}"></span></h2>
+    <p class="gris" th:if="${#lists.isEmpty(correos)}">No hay avisos de recojo en la sucursal.</p>
+    <a class="mensaje-lista" th:each="item : ${correos}" th:href="@{/correo(id=${item.id})}"
+       th:attr="aria-current=${correo.id==item.id ? 'page' : null}">
+      <span class="remitente"><b>Plaza Vea</b><time th:text="${item.fecha_recojo}"></time></span>
+      <strong th:text="|Tu pedido ${item.referencia} está listo para recoger|"></strong>
+      <small th:text="|${item.nombre_cliente} · ${item.sucursal}|"></small>
+    </a>
+  </aside>
+  <article th:if="${correo}" class="correo-mensaje">
+    <header class="mensaje-meta">
+      <h2 th:text="|Tu pedido ${correo.referencia} está listo para recoger|"></h2>
+      <div class="correo-envio">
+        <div class="correo-avatar"><img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Plaza_Vea_nuevo_logo.svg" alt="Plaza Vea"></div>
+        <div><strong>Plaza Vea</strong> <span class="correo-direccion">&lt;retiros@plazavea.example&gt;</span>
+          <small th:text="|Para ${correo.nombre_cliente} · ${correo.referencia_cliente}|"></small></div>
+        <time th:text="|${correo.fecha_recojo} · ${correo.hora_recojo}|"></time>
+      </div>
+    </header>
+    <div class="mensaje-cuerpo">
+      <section class="mensaje-resumen">
+        <p class="eyebrow">Recojo en tienda</p>
+        <h3 th:text="|Hola, ${correo.nombre_cliente}|"></h3>
+        <p th:text="|Tu pedido ${correo.referencia} ya está preparado. Puedes recogerlo a partir de la fecha y hora indicadas.|"></p>
+        <dl class="correo-datos">
+          <div><dt>Sucursal elegida</dt><dd th:text="${correo.sucursal}"></dd></div>
+          <div><dt>Disponible a partir de</dt><dd th:text="|${correo.fecha_recojo} a las ${correo.hora_recojo} (hora de Perú)|"></dd></div>
+        </dl>
+      </section>
+      <section class="correo-qr">
+        <h3>Tu código de recojo</h3>
+        <p th:if="${vigente}">Acércate al puesto de Atención de la sucursal elegida y presenta este QR. El personal verificará tu pedido y te entregará los productos.</p>
+        <p th:unless="${vigente}" class="aviso">Esta copia del aviso se conserva en la bandeja. El código ya no está habilitado para recojo.</p>
+        <img th:src="${qr}" width="180" height="180" alt="Código QR de recojo del pedido">
+        <small>Si el lector no reconoce el QR, muestra este código</small>
+        <code th:text="${correo.codigo}"></code>
+      </section>
+      <section class="correo-productos">
+        <h3>Productos del pedido</h3>
+        <ul><li th:each="producto : ${productos}"><span><img th:if="${producto.imagen_url}" class="foto-producto" th:src="${producto.imagen_url}" alt="" loading="lazy" referrerpolicy="no-referrer"><strong th:text="${producto.nombre}"></strong><small th:if="${producto.marca}" th:text="${producto.marca}"></small><small th:text="|SKU ${producto.sku}|"></small></span><span class="unidad" th:text="|${producto.cantidad} ud.|"></span></li></ul>
+      </section>
+      <p class="correo-pie">Mensaje de demostración del panel académico de Plaza Vea.</p>
+    </div>
+  </article>
+  <section th:unless="${correo}" class="correo-mensaje correo-vacio">
+    <h2>Sin avisos de recojo</h2>
+    <p>El aviso aparece cuando Empaquetado marca un pedido de recojo como listo.</p>
+  </section>
+</main>
+</body>
+</html>
+
+

@@ -1,0 +1,53 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Iniciar panel Plaza Vea",
+      "type": "process",
+      "command": "java",
+      "args": [
+        "-jar",
+        "${workspaceFolder}/target/plazavea-operaciones-1.4.0.jar"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "DB_USER": "${input:pgUser}",
+          "DB_PASSWORD": "${input:pgPassword}"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    }
+  ],
+  "inputs": [
+    {
+      "id": "pgUser",
+      "type": "promptString",
+      "description": "Usuario local de PostgreSQL",
+      "default": "postgres"
+    },
+    {
+      "id": "pgPassword",
+      "type": "promptString",
+      "description": "Contraseña local de PostgreSQL",
+      "password": true
+    }
+  ]
+}
+
+
+
+
+
+
+
+

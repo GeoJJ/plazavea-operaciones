@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ingreso | Operaciones Plaza Vea</title><link rel="stylesheet" th:href="@{/panel.css}"></head>
+<body class="login">
+<main class="login-layout">
+  <section class="login-brand"><div class="brand"><img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Plaza_Vea_nuevo_logo.svg" alt="Plaza Vea"></div>
+    <div><p class="eyebrow">Operaciones de tienda</p><h1>Pedidos e inventario en un solo lugar.</h1><p>Coordina la preparación, el recojo y el despacho desde el panel de tu sucursal.</p></div>
+    <small>Plaza Vea · Prototipo académico</small>
+  </section>
+  <section class="login-form"><form th:action="@{/login}" method="post">
+    <p class="eyebrow">Panel interno</p><h2>Iniciar sesión</h2>
+    <p class="aviso error" th:if="${param.error}" role="alert">Usuario o contraseña incorrectos.</p>
+    <p class="aviso" th:if="${param.logout}" role="status">La sesión se cerró correctamente.</p>
+    <label>Usuario<input name="username" autocomplete="username" required autofocus></label>
+    <label>Contraseña<input type="password" name="password" autocomplete="current-password" required></label>
+    <button>Ingresar al panel <span aria-hidden="true">→</span></button>
+    <details class="login-usuarios" th:if="${demo}">
+      <summary>Usuarios de demostración</summary>
+      <p>Picking: <b>picking</b><br>Empaquetado: <b>empaquetador</b><br>Atención: <b>atencion</b><br>Almacén: <b>almacen</b><br>Supervisión: <b>supervisor</b></p>
+    </details>
+  </form></section>
+</main>
+</body></html>
+
+
+
